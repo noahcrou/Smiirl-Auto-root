@@ -1,12 +1,33 @@
+# Gaining Root Access on the Smiirl Counter
+
 ## Introduction
+
 Hi my name is noahcrou and recently I have been tinkering with the idea of gaining root access on the smiirl counter.
 
-The smiirl counter is an IoT device aimed at businesses to show off their subscriber counts or likes. It is a physical counter to put into your business that is connected to their server with an option to use a custom API in applications or track something else (e.g number of subscribers on their custom website). I have decided that my first target was the web page that is constantly open on the network to supply the counter with Wi-Fi passwords. I quickly understood that the web page used a cgi-bin with Lua. After scrolling through the HTML code I found that it made calls to /cgi-bin/luci/, so I tried to query the luci page and was met with a login page. I thought that was odd since there is no way to manage their products outside the smiirl platform. My first thought was that maybe there was a hardcoded password inside every counter shipped with this custom software. My focus then shifted from web to hardware, I needed to get my hands on the firmware running inside the machine. Before I started anything I contacted the company to see if they could provide me with a version of their production firmware which they declined saying there was no publicly available firmware to download. But since I had a physical device with me I just needed to get into the UART interface and get root access! The UART was populated with the standard 4-pin header that gave a somewhat direct access to root inside the counter. The only thing I had to do is change the bootargs in the U-Boot environment from: init=/sbin/sh to init=/bin/sh . This boots the device straight into a shell as PID 1, bypassing the normal init and any login prompt. Upon reboot, the root shell appeared! Now I just dumped the raw NAND flash and I had the whole firmware.
+The smiirl counter is an IoT device aimed at businesses to show off their subscriber counts or likes. It is a physical counter to put into your business that is connected to their server with an option to use a custom API in applications or track something else (e.g number of subscribers on their custom website).
 
+I have decided that my first target was the web page that is constantly open on the network to supply the counter with Wi-Fi passwords. I quickly understood that the web page used a `cgi-bin` with Lua. After scrolling through the HTML code I found that it made calls to `/cgi-bin/luci/`, so I tried to query the luci page and was met with a login page. I thought that was odd since there is no way to manage their products outside the smiirl platform.
 
-## Problem 1: Unauthenticated ssh activation endpoint
+My first thought was that maybe there was a hardcoded password inside every counter shipped with this custom software. My focus then shifted from web to hardware, I needed to get my hands on the firmware running inside the machine. Before I started anything I contacted the company to see if they could provide me with a version of their production firmware which they declined saying there was no publicly available firmware to download.
 
-After a bit of analysis I saw a file inside the lua/luci controller folder called api.lua . The file contains every exposed API call to the counter (e.g send WiFi password, get public encryption keys, etc.). Inside the calls was an endpoint called api/activate/ssh that when called upon is supposed to open the ssh port. Even worse it generates an 8-character alphanumeric password, sets it as the new system password and returns to the unauthenticated user the password in plaintext! Using this knowledge, every smiirl counter can be hijacked without authentication.
+But since I had a physical device with me I just needed to get into the UART interface and get root access! The UART was populated with the standard 4-pin header that gave a somewhat direct access to root inside the counter. The only thing I had to do is change the `bootargs` in the U-Boot environment from:
+
+```
+init=/sbin/sh
+```
+
+to:
+
+```
+init=/bin/sh
+```
+
+This boots the device straight into a shell as PID 1, bypassing the normal init and any login prompt. Upon reboot, the root shell appeared! Now I just dumped the raw NAND flash and I had the whole firmware.
+
+## Problem 1: Unauthenticated SSH activation endpoint
+
+After a bit of analysis I saw a file inside the `lua/luci` controller folder called `api.lua`. The file contains every exposed API call to the counter (e.g send WiFi password, get public encryption keys, etc.). Inside the calls was an endpoint called `api/activate/ssh` that when called upon is supposed to open the ssh port. Even worse it generates an 8-character alphanumeric password, sets it as the new system password and returns to the unauthenticated user the password in plaintext! Using this knowledge, every smiirl counter can be hijacked without authentication.
 
 ## The POC
+
 The POC takes only the ip and an optional port. It will automatically open the SSH port and give you the password!
