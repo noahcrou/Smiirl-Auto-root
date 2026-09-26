@@ -24,7 +24,7 @@ init=/bin/sh
 
 This boots the device straight into a shell as PID 1, bypassing the normal init and any login prompt. Upon reboot, the root shell appeared! Now I just dumped the raw NAND flash and I had the whole firmware.
 
-## Problem 1: Unauthenticated SSH activation endpoint
+## Problem: Unauthenticated SSH activation endpoint
 
 After a bit of analysis I saw a file inside the `lua/luci` controller folder called `api.lua`. The file contains every exposed API call to the counter (e.g send WiFi password, get public encryption keys, etc.). Inside the calls was an endpoint called `api/activate/ssh` that when called upon is supposed to open the ssh port. Even worse it generates an 8-character alphanumeric password, sets it as the new system password and returns to the unauthenticated user the password in plaintext! Using this knowledge, every smiirl counter can be hijacked without authentication.
 
